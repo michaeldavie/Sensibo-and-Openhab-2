@@ -2,7 +2,7 @@
 
 Welcome to the Sensibo-and-Openhab-V2 wiki!
 
-The Openhab 1.8 instructions have been modified to work with Openhab V2 beta 4, please let me know how this works as I'm currently still on OH 1.8, or if you have a more elegant way of doing this.
+The Openhab 1.8 instructions have been modified to work with Openhab V2 beta 4, please let me know how this works, or if you have a more elegant way of doing this. I'm currently still on OH 1.8.
 
 To get Openhab V2 to control Sensibo via the Sensibo API carry out the following steps.
 
