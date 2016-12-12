@@ -57,32 +57,45 @@ This first rule sends the commands to the API in response to changes in a virtua
     end
 
 This second rule queries the API for AC Status and Temperature Measurements and updates the Virtual switch in case the phone app has been used to change the AC Status. It also provides the POD temperature measurement and sends an email when the batteries drop below the level set at the top of the rules file. (This assumes you have the mail binding installed and configured. If you don't need this comment it out by adding // before the sendMail line.)
-
+```java
     rule "Update Heatpump Sensibo Status"
     when Time cron "50 * * * * ?"
     then
     if (Heatpump1Stable)
     try {
-    var Heatpump1Status = executeCommandLine('curl -sSH "Accept: application/json"     "https://home.sensibo.com/api/v2/pods/MYPODID/acStates?apiKey=MYAPIKEY&limit=1&fields=acState"', 5000)
-    	var String Heatpump1On = (transform("JSONPATH", "$.result..on[0]", Heatpump1Status))
-    	if (Heatpump1On == "true" && Heatpump1Stable)
-    {	postUpdate(Heatpump1, ON)	}	
-    	if (Heatpump1On == "false" && Heatpump1Stable)
-    {	postUpdate(Heatpump1, OFF)	}	
-    	var Heatpump1Measurements = executeCommandLine('curl -sSH "Accept: application/json"     "https://home.sensibo.com/api/v2/pods/MYPODID/measurements?apiKey=<MYAPIKEY>&fields=batteryVoltage,temperature,humidity"', 5000)
-    	val Number Heatpump1TemperatureValue = new Double(transform("JSONPATH", "$.result[0].temperature", Heatpump1Measurements))
-      val Number Heatpump1HumidityValue = new Double(transform("JSONPATH", "$.result[0].humidity", Heatpump1Measurements))
-      val Number Heatpump1Battery = new Double(transform("JSONPATH", "$.result[0].batteryVoltage", Heatpump1Measurements))
-      var String Heatpump1BatteryTransform = (transform("JSONPATH", "$.result..batteryVoltage", Heatpump1Measurements))
-    	postUpdate(Heatpump1SensiboTemperature, Heatpump1TemperatureValue)
-      postUpdate(Heatpump1SensiboHumidity, Heatpump1HumidityValue)
-    if	(Heatpump1Battery < ReplaceBatteryLevel && BatteryEmailNotSent)
+	var Heatpump1Status = executeCommandLine('curl -sSH "Accept: application/json"     "https://home.sensibo.com/api/v2/pods/MYPODID/acStates?apiKey=MYAPIKEY&limit=1&fields=acState"', 5000)
+
+	val String Heatpump1On = (transform("JSONPATH", "$.result[0].acState.on", Heatpump1Status))
+	val String Heatpump1Mode = (transform("JSONPATH", "$.result[0].acState.mode", Heatpump1Status))
+	val Number Heatpump1Target = new Double(transform("JSONPATH", "$.result[0].acState.targetTemperature", Heatpump1Status))
+	val String Heatpump1Fan = (transform("JSONPATH", "$.result[0].acState.fanLevel", Heatpump1Status))
+
+	if (Heatpump1On == "true")
+    {	postUpdate(OnOffItem, ON)	}	
+	if (Heatpump1On == "false")
+    {	postUpdate(OnOffItem, OFF)	}	
+
+	postUpdate(TargetItem, Heatpump1Target)
+	postUpdate(ModeItem, Heatpump1Mode)
+	postUpdate(FanItem, Heatpump1Fan)
+    	
+	var Heatpump1Measurements = executeCommandLine('curl -sSH "Accept: application/json"     "https://home.sensibo.com/api/v2/pods/MYPODID/measurements?apiKey=<MYAPIKEY>&fields=batteryVoltage,temperature,humidity"', 5000)
+
+	val Number Heatpump1Temperature = new Double(transform("JSONPATH", "$.result[0].temperature", Heatpump1Measurements))
+	val Number Heatpump1Humidity = new Double(transform("JSONPATH", "$.result[0].humidity", Heatpump1Measurements))
+	val Number Heatpump1Battery = new Double(transform("JSONPATH", "$.result[0].batteryVoltage", Heatpump1Measurements))
+
+	postUpdate(TemperatureItem, Heatpump1Temperature)
+	postUpdate(HumidityItem, Heatpump1Humidity)
+	postUpdate(BatteryItem, Heatpump1Battery)
+
+	if	(Heatpump1Battery < ReplaceBatteryLevel && BatteryEmailNotSent)
         {	sendMail ("MYEMAILADDRESS", "Heatpump1 Heatpump", "Heatpump1 batteries are low! Their voltage is "         +Heatpump1Battery)
     		BatteryEmailNotSent = false	}
     } catch(Throwable t) {
     	logError("Heatpumps Status", "Weird stuff happened: {}", t)}
     end
-
+```
 The third rule resets a variable once a day so only one battery status email is sent per day.
 
     rule "reset dead battery email"
