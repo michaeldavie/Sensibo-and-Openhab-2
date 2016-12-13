@@ -1,0 +1,9 @@
+/* Sensibo */
+
+Switch   MainFloorState
+Number   MainFloorTemp
+Number   MainFloorHumidity
+Number   MainFloorBattery
+Number   MainFloorTarget
+String   MainFloorFan
+String   MainFloorMode

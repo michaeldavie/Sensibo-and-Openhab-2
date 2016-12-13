@@ -1,0 +1,91 @@
+import org.openhab.core.library.types.*
+import org.openhab.model.script.actions.*
+
+val String APIKey = "PASTE_YOUR_API_KEY_HERE"
+val String PodID1 = "PASTE_YOUR_POD_ID_HERE"
+
+var Boolean WriteInProgress = false
+var Boolean MainFloorBoolean
+
+rule "Read Sensibo State and Measurements"
+
+when
+  Time cron "50 * * * * ?"
+then
+
+if WriteInProgress == false
+  try { 
+
+    var Heatpump1Status = executeCommandLine('curl -sSH "Accept: application/json"     "https://home.sensibo.com/api/v2/pods/' + PodID1 + '/acStates?apiKey=' + APIKey + '&limit=1&fields=acState"', 5000)
+    val String Heatpump1On = (transform("JSONPATH", "$.result[0].acState.on", Heatpump1Status))
+    val String Heatpump1Mode = (transform("JSONPATH", "$.result[0].acState.mode", Heatpump1Status))
+    val Number Heatpump1Target = new Integer(transform("JSONPATH", "$.result[0].acState.targetTemperature", Heatpump1Status))
+    val String Heatpump1Fan = (transform("JSONPATH", "$.result[0].acState.fanLevel", Heatpump1Status))
+
+    if (Heatpump1On == "true")
+      {   postUpdate(MainFloorState, ON)   }
+
+    if (Heatpump1On == "false")
+      {   postUpdate(MainFloorState, OFF)  }   
+
+    postUpdate(MainFloorTarget, Heatpump1Target)
+    postUpdate(MainFloorMode, Heatpump1Mode)
+    postUpdate(MainFloorFan, Heatpump1Fan)
+
+    var Heatpump1Measurements = executeCommandLine('curl -sSH "Accept: application/json"     "https://home.sensibo.com/api/v2/pods/' + PodID1 + '/measurements?apiKey=' + APIKey + '&fields=batteryVoltage,temperature,humidity"', 5000)
+    val Number Heatpump1Temperature = new Double(transform("JSONPATH", "$.result[0].temperature", Heatpump1Measurements))
+    val Number Heatpump1Humidity = new Double(transform("JSONPATH", "$.result[0].humidity", Heatpump1Measurements))
+    val Number Heatpump1Battery = new Integer(transform("JSONPATH", "$.result[0].batteryVoltage", Heatpump1Measurements))
+
+    postUpdate(MainFloorTemp, Heatpump1Temperature)
+    postUpdate(MainFloorHumidity, Heatpump1Humidity)
+    postUpdate(MainFloorBattery, Heatpump1Battery)
+
+    }
+
+  catch(Throwable t) {
+    logError("SensiboRead", "Error was caught: {}", t)
+  }
+
+end
+
+
+rule "Write MainFloor State"
+
+when
+  Item MainFloorState received command or
+  Item MainFloorMode received command or
+  Item MainFloorFan received command or
+  Item MainFloorTarget received command
+then
+  
+if WriteInProgress == false
+  try {
+
+    WriteInProgress = true
+
+    if MainFloorState.state == ON {
+      MainFloorBoolean = true
+    else
+      MainFloorBoolean = false
+    }
+
+    var String CommandStart = 'curl@@-H@@"Content-Type: application/json"@@-X@@POST@@-d@@{"acState":{'
+    var String CommandState = '"on":' + MainFloorBoolean + ','
+    var String CommandMode = '"mode":"' + MainFloorMode.state + '",'
+    var String CommandFan = '"fanLevel":"' + MainFloorFan.state + '",'
+    var String CommandTemp = '"targetTemperature":' + (MainFloorTarget.state as DecimalType).intValue
+    var String CommandEnd = '}}@@https://home.sensibo.com/api/v2/pods/' + PodID1 + '/acStates?apiKey=' + APIKey
+
+    var String FullCommand = CommandStart + CommandState + CommandMode + CommandFan + CommandTemp + CommandEnd
+
+    executeCommandLine(FullCommand, 10000)
+
+    WriteInProgress = false
+  }
+
+  catch(Throwable t) {
+    logError("SensiboWrite", "Error was caught: {}", t)
+  }
+  
+end

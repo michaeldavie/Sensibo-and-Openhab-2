@@ -1,0 +1,12 @@
+sitemap home label="Home"
+{
+  Frame label="Main Floor" {
+    Switch    item=MainFloorState      label="On/Off"                   icon="switch"
+    Switch    item=MainFloorMode       label="Mode"                     icon="heating"        mappings=[cool="Cool",heat="Heat",fan="Fan"]               visibility=[MainFloorState==ON]
+    Setpoint  item=MainFloorTarget     label="Target [%.0f] ºC"         icon="temperature"    minValue=18 maxValue=26 step=1.0                           visibility=[MainFloorState==ON]
+    Switch    item=MainFloorFan        label="Fan"                      icon="fan"            mappings=[low="Low",medium="Med",high="High",auto="Auto"]  visibility=[MainFloorState==ON]
+    Text      item=MainFloorTemp       label="Temperature [%.1f ºC]"    icon="temperature"
+    Text      item=MainFloorHumidity   label="Humidity [%.0f %%]"       icon="water"
+    Text      item=MainFloorBattery    label="Battery [%d mV]"          icon="energy"
+  }
+}
