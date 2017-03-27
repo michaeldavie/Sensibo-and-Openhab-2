@@ -18,18 +18,27 @@ Make a note of these as you will need to add one of them instead of MYPODID in t
 
 In your items file, default.items in my case, you need to add items similar to this
 
-    Switch Heatpump1
-    Number Heatpump1SensiboTemperature
+    Switch	Heatpump1			"Airconditioner"	<climate>
+    String	Heatpump1SensiboMode		"Mode [%s]"		<climate>
+    String	Heatpump1SensiboFan		"Fan Speed [%s]"	<selfAiring>
+    Number	Heatpump1SensiboTemperature	"Room Temperature [%.1f °C]"	<temperature>
+    Number	Heatpump1SensiboHumidity	"Room Humidity [%.1f %%]"	<humidity>
+    Number	Heatpump1SensiboSetpoint	"Temperature Setpoint [%.0f °C]"	<temperature>
+    Number	BatteryItem			"Battery voltage [%.1f V]"
 
 In your sitemap, default.sitemap in my case, you need to add entries similar to this
 
-    Switch item=Heatpump1 label="Heatpump1 Cooling"
-    Text item=Heatpump1SensiboTemperature label="Sensibo1 Temperature [%.1f C]" icon="temperature"
+    Switch item=Heatpump1
+    Switch item=Heatpump1SensiboMode label="Mode" mappings=["cool"='Cool',"heat"='Heat',"fan"='Fan'] icon="climate"
+    Switch item=Heatpump1SensiboFan label="Fan" mappings=["auto"= 'Auto', "low"='Low',"medium"='Med',"high"="High"] icon="selfAiring"
+    Text item=Heatpump1SensiboSetpoint
+    Setpoint item=Heatpump1SensiboSetpoint label="Adjustment" icon="temperature" minValue=18 maxValue=30 step=1
 
 At the time of writing the HTTP binding in Openhab doesn't support HTTPS which Sensibo requires to all commands have to be sent and received from the command line using Curl, so everything works via a rule.
 
 Create a rules file named something meaningful, I used Heatpumps.rules, and inside it you need to create 3 rules.
 
+    import java.text.DecimalFormat
     var Boolean BatteryEmailNotSent = true
     var Boolean Heatpump1Stable = true
     var Number ReplaceBatteryLevel = 2800 // level to send new battery email
@@ -38,20 +47,33 @@ Create a rules file named something meaningful, I used Heatpumps.rules, and insi
 This first rule sends the commands to the API in response to changes in a virtual heatpump switch set in the items file, it also disables the second rule for 15 seconds so commands can't get overwritten by out of date status updates.
 
     rule "Send Command to Sensibo from Heatpump Switch"
-    when Item Heatpump1 changed then
+    when
+     Item Heatpump1 changed or
+     Item Heatpump1SensiboSetpoint changed or
+     Item Heatpump1SensiboMode changed or
+     Item Heatpump1SensiboFan changed
+    then
     if (Heatpump1.state == ON && Heatpump1Stable)
     {   Heatpump1Stable = false
-	    logInfo("Heatpumps", "Heatpump1 on Switch Rule Ran")
-	    executeCommandLine('curl@@-H@@Content-Type: application/x-www-form-urlencoded@@-X@@POST@@-d@@{"acState":{"on":true,"mode":"cool","fanLevel":"auto","targetTemperature":19}}@@https://home.sensibo.com/api/v2/pods/MYPODID/acStates?apiKey=MYAPIKEY&fields=acState', 5000)
-    	PauseHeatpump1Updates = createTimer(now.plusSeconds(15))[|
+        logInfo("Heatpumps", "Heatpump1 on Switch Rule Ran")
+        val DecimalFormat df = new DecimalFormat("#")
+	val Number Heatpump1TargetTemperatureRounded = (df.format(Heatpump1SensiboSetpoint.state as DecimalType))
+        executeCommandLine("curl@@-H@@Content-Type: application/x-www-form-urlencoded@@-X@@POST@@-d@@{\"acState\":{\"on\":true,\"mode\":\"" + Heatpump1SensiboMode.state + "\",\"fanLevel\":\"" + Heatpump1SensiboFan.state + "\",\"targetTemperature\":" +
+    Heatpump1TargetTemperatureRounded.toString +
+        "}}@@https://home.sensibo.com/api/v2/pods/MYPODID/acStates?apiKey=MYAPIKEY&fields=acState', 5000)
+    	PauseHeatpump1Updates = createTimer(now.plusSeconds(2))[|
     	Heatpump1Stable = true
     	]}
     	
     if (Heatpump1.state == OFF && Heatpump1Stable)
-    {	Heatpump1Stable = false
-    	logInfo("Heatpumps", "Heatpump1 off Switch Rule Ran")
-    	executeCommandLine('curl@@-H@@Content-Type: application/x-www-form-urlencoded@@-X@@POST@@-d@@{"acState":{"on":false,"mode":"cool","fanLevel":"auto","targetTemperature":19}}@@https://home.sensibo.com/api/v2/pods/MYPODID/acStates?apiKey=MYAPIKEY&fields=acState', 5000)
-    	PauseHeatpump1Updates = createTimer(now.plusSeconds(15))[|
+    {   Heatpump1Stable = false
+        logInfo("Heatpumps", "Heatpump1 off Switch Rule Ran")
+        val DecimalFormat df = new DecimalFormat("#")
+	val Number Heatpump1TargetTemperatureRounded = (df.format(Heatpump1SensiboSetpoint.state as DecimalType))
+        executeCommandLine("curl@@-H@@Content-Type: application/x-www-form-urlencoded@@-X@@POST@@-d@@{\"acState\":{\"on\":false,\"mode\":\"" + Heatpump1SensiboMode.state + "\",\"fanLevel\":\"" + Heatpump1SensiboFan.state + "\",\"targetTemperature\":" +
+    Heatpump1TargetTemperatureRounded.toString +
+    "}}@@https://home.sensibo.com/api/v2/pods/MYPODID/acStates?apiKey=MYAPIKEY&fields=acState', 5000)
+    	PauseHeatpump1Updates = createTimer(now.plusSeconds(2))[|
     	Heatpump1Stable = true
     	]}
     end
@@ -85,8 +107,8 @@ This second rule queries the API for AC Status and Temperature Measurements and 
 	val Number Heatpump1Humidity = new Double(transform("JSONPATH", "$.result[0].humidity", Heatpump1Measurements))
 	val Number Heatpump1Battery = new Double(transform("JSONPATH", "$.result[0].batteryVoltage", Heatpump1Measurements))
 
-	postUpdate(TemperatureItem, Heatpump1Temperature)
-	postUpdate(HumidityItem, Heatpump1Humidity)
+	postUpdate(Heatpump1SensiboTemperature, Heatpump1Temperature)
+	postUpdate(Heatpump1SensiboHumidity, Heatpump1Humidity)
 	postUpdate(BatteryItem, Heatpump1Battery)
 
 	if	(Heatpump1Battery < ReplaceBatteryLevel && BatteryEmailNotSent)
