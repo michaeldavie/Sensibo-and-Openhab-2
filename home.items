@@ -1,9 +1,9 @@
 /* Sensibo */
 
-Switch   MainFloorState
-Number   MainFloorTemp
-Number   MainFloorHumidity
-Number   MainFloorBattery
-Number   MainFloorTarget
-String   MainFloorFan
-String   MainFloorMode
+Switch   SensiboState
+Number   SensiboTemp
+Number   SensiboHumidity
+Number   SensiboBattery
+Number   SensiboTarget
+String   SensiboFan
+String   SensiboMode
