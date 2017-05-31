@@ -1,0 +1,103 @@
+import org.openhab.core.library.types.*
+import org.openhab.model.script.actions.*
+
+val String APIKey = "INSERT-API-KEY"
+val String PodID = "INSERT-POD-ID"
+
+var Boolean PodBoolean
+
+/*** Read Sensibo States ***/
+
+rule "Read Sensibo States"
+
+  when
+    System started
+  then
+
+  try {
+    var PodStatus = executeCommandLine('curl -sSH "Accept: application/json"     "https://home.sensibo.com/api/v2/pods/' + PodID + '/acStates?apiKey=' + APIKey + '&limit=1&fields=acState"', 5000)
+    val String PodOn = (transform("JSONPATH", "$.result[0].acState.on", PodStatus))
+    val String PodMode = (transform("JSONPATH", "$.result[0].acState.mode", PodStatus))
+    val Number PodTarget = new Integer(transform("JSONPATH", "$.result[0].acState.targetTemperature", PodStatus))
+    val String PodFan = (transform("JSONPATH", "$.result[0].acState.fanLevel", PodStatus))
+
+    if (PodOn == "true")
+      {   postUpdate(SensiboState, ON)   }
+
+    if (PodOn == "false")
+      {   postUpdate(SensiboState, OFF)  }   
+
+    postUpdate(SensiboTarget, PodTarget)
+    postUpdate(SensiboMode, PodMode)
+    postUpdate(SensiboFan, PodFan)
+  }
+
+  catch(Throwable t) {
+    logError("SensiboReadStates", "Error was caught: {}", t)
+  }
+
+end
+  
+/*** Read Sensibo Measurements ***/
+
+rule "Read Sensibo Measurements"
+
+  when
+    System started or
+    Time cron "0 0/5 * * * ?"
+  then
+
+  try {
+    var PodMeasurements = executeCommandLine('curl -sSH "Accept: application/json"     "https://home.sensibo.com/api/v2/pods/' + PodID + '/measurements?apiKey=' + APIKey + '&fields=batteryVoltage,temperature,humidity"', 5000)
+    val Number PodTemperature = new Double(transform("JSONPATH", "$.result[0].temperature", PodMeasurements))
+    val Number PodHumidity = new Double(transform("JSONPATH", "$.result[0].humidity", PodMeasurements))
+    val Number PodBattery = new Integer(transform("JSONPATH", "$.result[0].batteryVoltage", PodMeasurements))
+
+    postUpdate(SensiboTemp, PodTemperature)
+    postUpdate(SensiboHumidity, PodHumidity)
+    postUpdate(SensiboBattery, PodBattery)
+
+  }
+  
+  catch(Throwable e) {
+    logError("SensiboReadMeasurements", "Error was caught: {}", e)
+  }
+
+end
+
+/*** Write Updated MainFloor State ***/
+
+rule "Write MainFloor State"
+
+  when
+    Item SensiboState changed or
+    Item SensiboMode received command or
+    Item SensiboFan received command or
+    Item SensiboTarget received command
+  then
+  
+  try {
+
+    if SensiboState.state == ON {
+      PodBoolean = true
+    else
+      PodBoolean = false
+    }
+
+    var String CommandURL = 'https://home.sensibo.com/api/v2/pods/' + PodID + '/acStates?apiKey=' + APIKey
+
+    var String CommandState = '{"acState":{"on":' + PodBoolean + ','
+    var String CommandMode = '"mode":"' + SensiboMode.state + '",'
+    var String CommandFan = '"fanLevel":"' + SensiboFan.state + '",'
+    var String CommandTemp = '"targetTemperature":' + (SensiboTarget.state as DecimalType).intValue + '}}'
+    var String CommandData = CommandState + CommandMode + CommandFan + CommandTemp
+
+    sendHttpPostRequest(CommandURL, 'application/json', CommandData)
+    logInfo("Main floor command", CommandData)
+  }
+
+  catch(Throwable t) {
+    logError("Main Floor Write", "Error was caught: {}", t)
+  }
+
+end

@@ -1,0 +1,11 @@
+sitemap home label="Home" {
+  Frame label="Sensibo" {
+    Switch    item=SensiboState      label="On/Off"                   icon="switch"
+    Switch    item=SensiboMode       label="Mode"                     icon="heating"        mappings=[cool="Cool",heat="Heat",fan="Fan"]
+    Setpoint  item=SensiboTarget     label="Target [%.0f ºC]"         icon="temperature"    minValue=18 maxValue=26 step=1.0
+    Switch    item=SensiboFan        label="Fan"                      icon="fan"            mappings=[low="Low",medium="Med",high="High",auto="Auto"]
+    Text      item=SensiboTemp       label="Temperature [%.1f ºC]"    icon="temperature"
+    Text      item=SensiboHumidity   label="Humidity [%.0f %%]"       icon="water"
+    Text      item=SensiboBattery    label="Battery [%d mV]"          icon="energy"
+  }
+}
