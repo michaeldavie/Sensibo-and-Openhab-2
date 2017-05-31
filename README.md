@@ -5,10 +5,10 @@ To have OpenHAB2 control a Sensibo system via the Sensibo API carry out the foll
 - Obtain an API key from Sensibo at https://home.sensibo.com/me/api.
 - Use your API key in the following URL below to get the ID's of your pods: https://home.sensibo.com/api/v2/users/me/pods?apiKey=MYAPIKEY
 - This should give you a reply similar to:
-```{"status": "success", "result": [{"id": "POD_ID"}]}```
-- Modify the rules file to include your API key and pod ID.
-- Add the items from the included items file to your system.
-- Add the entries from the included sitemap file to your system.
+`{"status": "success", "result": [{"id": "POD_ID"}]}`
+- Modify `sensibo-interface.rules` to include your API key and pod ID.
+- Add the items from `sensibo.items` to your system.
+- Add the entries from `sensibo.sitemap` to your system.
 
 # Notes
 
