@@ -15,3 +15,4 @@ To have OpenHAB2 control a Sensibo system via the Sensibo API carry out the foll
 - The Sensibo API does not update a pod's state when it is off. As a result, I've chosen to store the user's desired state in OpenHAB items, rather than to read the current state from the Sensibo API. The desired state is then pushed to the pod when it is turned on.
 - The rules seem to function correctly, but do throw timeout and null pointer exceptions.
 - The rules and items can be modified / duplicated to support additional pods.
+- The "Switchable" tag allows the on/off switch to be made available to Homekit/Siri and Alexa via their respective bindings, allowing for voice control.
