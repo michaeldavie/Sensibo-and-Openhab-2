@@ -6,9 +6,9 @@ val String PodID = "INSERT-POD-ID"
 
 var Boolean PodBoolean
 
-/*** Read Sensibo States ***/
+/*** Read Sensibo State ***/
 
-rule "Read Sensibo States"
+rule "Read Sensibo State"
 
   when
     System started
@@ -33,7 +33,7 @@ rule "Read Sensibo States"
   }
 
   catch(Throwable t) {
-    logError("SensiboReadStates", "Error was caught: {}", t)
+    logError("Sensibo read state", "Error was caught: {}", t)
   }
 
 end
@@ -60,14 +60,14 @@ rule "Read Sensibo Measurements"
   }
   
   catch(Throwable e) {
-    logError("SensiboReadMeasurements", "Error was caught: {}", e)
+    logError("Sensibo read measurements", "Error was caught: {}", e)
   }
 
 end
 
-/*** Write Updated MainFloor State ***/
+/*** Write Sensibo State ***/
 
-rule "Write MainFloor State"
+rule "Write Sensibo State"
 
   when
     Item SensiboState changed or
@@ -94,11 +94,11 @@ rule "Write MainFloor State"
     var String CommandData = CommandState + CommandMode + CommandFan + CommandTemp
 
     sendHttpPostRequest(CommandURL, 'application/json', CommandData)
-    logInfo("Main floor command", CommandData)
+    logInfo("Sensibo command sent", CommandData)
   }
 
   catch(Throwable t) {
-    logError("Main Floor Write", "Error was caught: {}", t)
+    logError("Sensibo write", "Error was caught: {}", t)
   }
 
 end
