@@ -78,10 +78,11 @@ rule "Write MainFloor State"
   
   try {
 
-    if SensiboState.state == ON {
-      PodBoolean = true
-    else
-      PodBoolean = false
+    if (SensiboState.state == ON) {
+      PodBoolean = true 
+    }
+    else {
+      PodBoolean = false 
     }
 
     var String CommandURL = 'https://home.sensibo.com/api/v2/pods/' + PodID + '/acStates?apiKey=' + APIKey
