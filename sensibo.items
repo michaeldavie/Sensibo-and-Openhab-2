@@ -1,6 +1,6 @@
 /* Sensibo */
 
-Switch   SensiboState
+Switch   SensiboState  ["Switchable"]
 Number   SensiboTemp
 Number   SensiboHumidity
 Number   SensiboBattery
