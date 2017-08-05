@@ -129,8 +129,13 @@ rule "Write Sensibo State"
     var String CommandTemp = '"targetTemperature":' + (SensiboTarget.state as DecimalType).intValue + '}}'
     var String CommandData = CommandState + CommandMode + CommandFan + CommandTemp
 
-    sendHttpPostRequest(CommandURL, 'application/json', CommandData)
-    logInfo("Sensibo command sent", CommandData)
+    var String UpdateResult = executeCommandLine('curl@@-sSH@@"Content-Type: application/json"@@-XPOST@@' + CommandURL + '@@-d@@'+ CommandData, 10000)
+    logInfo("Update result", UpdateResult)
+
+    if (!UpdateResult.contains('"status": "success"')) {
+      Thread::sleep(5000)
+      sendCommand(SensiboMode, SensiboMode.state)
+    }
   }
 
   catch(Throwable t) {
