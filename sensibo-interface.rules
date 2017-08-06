@@ -56,7 +56,7 @@ rule "Read Sensibo Temp and Humidity"
   try {
     var String PodMeasurements = executeCommandLine('curl -sSH "Accept: application/json"     "https://home.sensibo.com/api/v2/pods/' + PodID + '/measurements?apiKey=' + APIKey + '&fields=temperature,humidity"', 5000)
 
-    if (PodMeasurements.contains('"status": "success"') {
+    if (PodMeasurements.contains('"status": "success"')) {
       val Number PodTemperature = new Double(transform("JSONPATH", "$.result[0].temperature", PodMeasurements))
       val Number PodHumidity = new Double(transform("JSONPATH", "$.result[0].humidity", PodMeasurements))
 
@@ -86,7 +86,7 @@ rule "Read Sensibo Battery"
   try {
     var String PodMeasurements = executeCommandLine('curl -sSH "Accept: application/json"     "https://home.sensibo.com/api/v2/pods/' + PodID + '/measurements?apiKey=' + APIKey + '&fields=batteryVoltage"', 5000)
 
-    if (PodMeasurements.contains('"status": "success"') {
+    if (PodMeasurements.contains('"status": "success"')) {
       val Number PodBattery = new Integer(transform("JSONPATH", "$.result[0].batteryVoltage", PodMeasurements))
       postUpdate(SensiboBattery, PodBattery)
     }
