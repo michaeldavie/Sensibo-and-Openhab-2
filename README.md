@@ -7,7 +7,6 @@ To have OpenHAB2 control a Sensibo system via the Sensibo API carry out the foll
 - This should give you a reply similar to:
 `{"status": "success", "result": [{"id": "POD_ID"}]}`
 - Modify `sensibo-interface.rules` to include your API key and pod ID and add it to your system.
-- For Sensibo Sky pods, disable or remove references to the battery voltage
 - Add the items from `sensibo.items` to your system.
 - Add the entries from `sensibo.sitemap` to your system.
 
