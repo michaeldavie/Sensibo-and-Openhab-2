@@ -1,10 +1,5 @@
-import org.openhab.core.library.types.*
-import org.openhab.model.script.actions.*
-
 val String APIKey = "INSERT-API-KEY"
 val String PodID = "INSERT-POD-ID"
-
-var Boolean PodBoolean
 
 /*** Read Sensibo State ***/
 
@@ -24,15 +19,21 @@ rule "Read Sensibo State"
       val String PodFan = (transform("JSONPATH", "$.result[0].acState.fanLevel", PodStatus))
 
       if (PodOn == "true")
-        {   postUpdate(SensiboState, ON)   }
+        { postUpdate(SensiboState, ON) }
 
       if (PodOn == "false")
-        {   postUpdate(SensiboState, OFF)  }   
+        { postUpdate(SensiboState, OFF) }
 
       postUpdate(SensiboTarget, PodTarget)
       postUpdate(SensiboMode, PodMode)
       postUpdate(SensiboFan, PodFan)
+
+      if (PodStatus.contains('"swing": ')) {
+        val String PodSwing = (transform("JSONPATH", "$.result[0].acState.swing", PodStatus))
+        postUpdate(SensiboSwing, PodSwing)
+      }
     }
+    
     else {
       logError("Pod state", "Error reading from Sensibo API")
     }
@@ -44,9 +45,10 @@ rule "Read Sensibo State"
 
 end
   
-/*** Read Sensibo Temperature and Humidity ***/
 
-rule "Read Sensibo Temp and Humidity"
+/*** Read Sensibo Measurements ***/
+
+rule "Read Sensibo Measurements"
 
   when
     System started or
@@ -54,7 +56,7 @@ rule "Read Sensibo Temp and Humidity"
   then
 
   try {
-    var String PodMeasurements = executeCommandLine('curl -sSH "Accept: application/json"     "https://home.sensibo.com/api/v2/pods/' + PodID + '/measurements?apiKey=' + APIKey + '&fields=temperature,humidity"', 5000)
+    var String PodMeasurements = executeCommandLine('curl -sSH "Accept: application/json"     "https://home.sensibo.com/api/v2/pods/' + PodID + '/measurements?apiKey=' + APIKey + '&fields=temperature,humidity,batteryVoltage"', 5000)
 
     if (PodMeasurements.contains('"status": "success"')) {
       val Number PodTemperature = new Double(transform("JSONPATH", "$.result[0].temperature", PodMeasurements))
@@ -62,41 +64,20 @@ rule "Read Sensibo Temp and Humidity"
 
       postUpdate(SensiboTemp, PodTemperature)
       postUpdate(SensiboHumidity, PodHumidity)
+
+      if (PodMeasurements.contains('"batteryVoltage": ')) {
+        val Number PodBattery = new Integer(transform("JSONPATH", "$.result[0].batteryVoltage", PodMeasurements))
+        postUpdate(SensiboBattery, PodBattery)
+      }
     }
+
     else {
-      logError("Pod temp and humidity", "Error reading from Sensibo API")
+      logError("Pod measurements", "Error reading from Sensibo API")
     }
   }
   
   catch(Throwable e) {
-    logError("Sensibo read temp and humidity", "Error was caught: {}", e)
-  }
-
-end
-
-/*** Read Sensibo Battery (v1 Pods only) ***/
-
-rule "Read Sensibo Battery"
-
-  when
-    System started or
-    Time cron "0 0 * * * ?"
-  then
-
-  try {
-    var String PodMeasurements = executeCommandLine('curl -sSH "Accept: application/json"     "https://home.sensibo.com/api/v2/pods/' + PodID + '/measurements?apiKey=' + APIKey + '&fields=batteryVoltage"', 5000)
-
-    if (PodMeasurements.contains('"status": "success"')) {
-      val Number PodBattery = new Integer(transform("JSONPATH", "$.result[0].batteryVoltage", PodMeasurements))
-      postUpdate(SensiboBattery, PodBattery)
-    }
-    else {
-      logError("Pod battery", "Error reading from Sensibo API")
-    }
-  }
-  
-  catch(Throwable e) {
-    logError("Sensibo read battery", "Error was caught: {}", e)
+    logError("Sensibo measurements", "Error was caught: {}", e)
   }
 
 end
@@ -109,25 +90,30 @@ rule "Write Sensibo State"
     Item SensiboState changed or
     Item SensiboMode received command or
     Item SensiboFan received command or
+    Item SensiboSwing received command or
     Item SensiboTarget received command
   then
   
   try {
+    var Boolean PodBoolean
 
-    if (SensiboState.state == ON) {
-      PodBoolean = true 
-    }
-    else {
-      PodBoolean = false 
-    }
+    if (SensiboState.state == ON)
+      { PodBoolean = true }
+    else
+      { PodBoolean = false }
 
     var String CommandURL = 'https://home.sensibo.com/api/v2/pods/' + PodID + '/acStates?apiKey=' + APIKey
 
     var String CommandState = '{"acState":{"on":' + PodBoolean + ','
     var String CommandMode = '"mode":"' + SensiboMode.state + '",'
     var String CommandFan = '"fanLevel":"' + SensiboFan.state + '",'
+    var String CommandSwing = ""
+
+    if (SensiboSwing.state != "")
+      { CommandSwing = '"swing":"' + SensiboSwing.state + '",' }
+
     var String CommandTemp = '"targetTemperature":' + (SensiboTarget.state as DecimalType).intValue + '}}'
-    var String CommandData = CommandState + CommandMode + CommandFan + CommandTemp
+    var String CommandData = CommandState + CommandMode + CommandFan + CommandSwing + CommandTemp
 
     var String UpdateResult = executeCommandLine('curl@@-sSH@@"Content-Type: application/json"@@-XPOST@@' + CommandURL + '@@-d@@'+ CommandData, 10000)
     logInfo("Update result", UpdateResult)

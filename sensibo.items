@@ -7,3 +7,4 @@ Number   SensiboBattery
 Number   SensiboTarget
 String   SensiboFan
 String   SensiboMode
+String   SensiboSwing
