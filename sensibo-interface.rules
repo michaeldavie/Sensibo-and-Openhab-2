@@ -65,7 +65,7 @@ rule "Read Sensibo Measurements"
       postUpdate(SensiboTemp, PodTemperature)
       postUpdate(SensiboHumidity, PodHumidity)
 
-      if (PodMeasurements.contains('"batteryVoltage": ')) {
+      if (!PodMeasurements.contains('"batteryVoltage": "null"')) {
         val Number PodBattery = new Integer(transform("JSONPATH", "$.result[0].batteryVoltage", PodMeasurements))
         postUpdate(SensiboBattery, PodBattery)
       }
