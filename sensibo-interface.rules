@@ -120,7 +120,7 @@ rule "Write Sensibo State"
 
     if (!UpdateResult.contains('"status": "success"')) {
       Thread::sleep(5000)
-      sendCommand(SensiboMode, SensiboMode.state)
+      sendCommand(SensiboMode, SensiboMode.state.toString)
     }
   }
 
