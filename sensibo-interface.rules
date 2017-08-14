@@ -119,6 +119,7 @@ rule "Write Sensibo State"
     logInfo("Update result", UpdateResult)
 
     if (!UpdateResult.contains('"status": "success"')) {
+      logInfo("Pod write", "Error writing to Sensobi API, retrying in 5 seconds")
       Thread::sleep(5000)
       sendCommand(SensiboMode, SensiboMode.state.toString)
     }
