@@ -10,32 +10,31 @@ rule "Read Sensibo State"
   then
 
   try {
-    var String PodStatus = executeCommandLine('curl -sSH "Accept: application/json"     "https://home.sensibo.com/api/v2/pods/' + PodID + '/acStates?apiKey=' + APIKey + '&limit=1&fields=acState"', 5000)
-
-    if (PodStatus.contains('"status": "success"')) {
-      val String PodOn = (transform("JSONPATH", "$.result[0].acState.on", PodStatus))
-      val String PodMode = (transform("JSONPATH", "$.result[0].acState.mode", PodStatus))
-      val Number PodTarget = new Integer(transform("JSONPATH", "$.result[0].acState.targetTemperature", PodStatus))
-      val String PodFan = (transform("JSONPATH", "$.result[0].acState.fanLevel", PodStatus))
-
-      if (PodOn == "true")
-        { postUpdate(SensiboState, ON) }
-
-      if (PodOn == "false")
-        { postUpdate(SensiboState, OFF) }
-
-      postUpdate(SensiboTarget, PodTarget)
-      postUpdate(SensiboMode, PodMode)
-      postUpdate(SensiboFan, PodFan)
-
-      if (PodStatus.contains('"swing": ')) {
-        val String PodSwing = (transform("JSONPATH", "$.result[0].acState.swing", PodStatus))
-        postUpdate(SensiboSwing, PodSwing)
-      }
-    }
+    var String PodStatus 
+      
+    do {
+      Thread::sleep(5000)
+      PodStatus = executeCommandLine('curl -sSH "Accept: application/json"     "https://home.sensibo.com/api/v2/pods/' + PodID + '/acStates?apiKey=' + APIKey + '&limit=1&fields=acState"', 5000)
+    } while (!PodStatus.contains('"status": "success"'))
     
-    else {
-      logError("Pod state", "Error reading from Sensibo API")
+    val String PodOn = (transform("JSONPATH", "$.result[0].acState.on", PodStatus))
+    val String PodMode = (transform("JSONPATH", "$.result[0].acState.mode", PodStatus))
+    val Number PodTarget = new Integer(transform("JSONPATH", "$.result[0].acState.targetTemperature", PodStatus))
+    val String PodFan = (transform("JSONPATH", "$.result[0].acState.fanLevel", PodStatus))
+
+    if (PodOn == "true")
+      { postUpdate(SensiboState, ON) }
+
+    if (PodOn == "false")
+      { postUpdate(SensiboState, OFF) }
+
+    postUpdate(SensiboTarget, PodTarget)
+    postUpdate(SensiboMode, PodMode)
+    postUpdate(SensiboFan, PodFan)
+
+    if (PodStatus.contains('"swing": ')) {
+      val String PodSwing = (transform("JSONPATH", "$.result[0].acState.swing", PodStatus))
+      postUpdate(SensiboSwing, PodSwing)
     }
   }
 
@@ -56,23 +55,22 @@ rule "Read Sensibo Measurements"
   then
 
   try {
-    var String PodMeasurements = executeCommandLine('curl -sSH "Accept: application/json"     "https://home.sensibo.com/api/v2/pods/' + PodID + '/measurements?apiKey=' + APIKey + '&fields=temperature,humidity,batteryVoltage"', 5000)
+    var String PodMeasurements
+      
+    do {
+      PodMeasurements = executeCommandLine('curl -sSH "Accept: application/json"     "https://home.sensibo.com/api/v2/pods/' + PodID + '/measurements?apiKey=' + APIKey + '&fields=temperature,humidity,batteryVoltage"', 5000)
+      Thread::sleep(5000)
+    } while (!PodMeasurements.contains('"status": "success"'))
+        
+    val Number PodTemperature = new Double(transform("JSONPATH", "$.result[0].temperature", PodMeasurements))
+    val Number PodHumidity = new Double(transform("JSONPATH", "$.result[0].humidity", PodMeasurements))
 
-    if (PodMeasurements.contains('"status": "success"')) {
-      val Number PodTemperature = new Double(transform("JSONPATH", "$.result[0].temperature", PodMeasurements))
-      val Number PodHumidity = new Double(transform("JSONPATH", "$.result[0].humidity", PodMeasurements))
+    postUpdate(SensiboTemp, PodTemperature)
+    postUpdate(SensiboHumidity, PodHumidity)
 
-      postUpdate(SensiboTemp, PodTemperature)
-      postUpdate(SensiboHumidity, PodHumidity)
-
-      if (!PodMeasurements.contains('"batteryVoltage": null')) {
-        val Number PodBattery = new Integer(transform("JSONPATH", "$.result[0].batteryVoltage", PodMeasurements))
-        postUpdate(SensiboBattery, PodBattery)
-      }
-    }
-
-    else {
-      logError("Pod measurements", "Error reading from Sensibo API")
+    if (!PodMeasurements.contains('"batteryVoltage": null')) {
+      val Number PodBattery = new Integer(transform("JSONPATH", "$.result[0].batteryVoltage", PodMeasurements))
+      postUpdate(SensiboBattery, PodBattery)
     }
   }
   
@@ -115,14 +113,24 @@ rule "Write Sensibo State"
     var String CommandTemp = '"targetTemperature":' + (SensiboTarget.state as DecimalType).intValue + '}}'
     var String CommandData = CommandState + CommandMode + CommandFan + CommandSwing + CommandTemp
 
+<<<<<<< HEAD
+    var String UpdateResult
+    
+    do {
+      UpdateResult = executeCommandLine('curl@@-sSH@@"Content-Type: application/json"@@-XPOST@@' + CommandURL + '@@-d@@'+ CommandData, 10000)
+      logInfo("Main floor command", UpdateResult)
+=======
     var String UpdateResult = executeCommandLine('curl@@-sSH@@"Content-Type: application/json"@@-XPOST@@' + CommandURL + '@@-d@@'+ CommandData, 10000)
     logInfo("Update result", UpdateResult)
 
     if (!UpdateResult.contains('"status": "success"')) {
       logInfo("Pod write", "Error writing to Sensobi API, retrying in 5 seconds")
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/master
+>>>>>>> Stashed changes
       Thread::sleep(5000)
-      sendCommand(SensiboMode, SensiboMode.state.toString)
-    }
+    } while (!UpdateResult.contains('"status": "success"'))
   }
 
   catch(Throwable t) {
