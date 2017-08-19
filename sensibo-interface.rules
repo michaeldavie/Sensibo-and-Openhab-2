@@ -113,22 +113,11 @@ rule "Write Sensibo State"
     var String CommandTemp = '"targetTemperature":' + (SensiboTarget.state as DecimalType).intValue + '}}'
     var String CommandData = CommandState + CommandMode + CommandFan + CommandSwing + CommandTemp
 
-<<<<<<< HEAD
     var String UpdateResult
     
     do {
       UpdateResult = executeCommandLine('curl@@-sSH@@"Content-Type: application/json"@@-XPOST@@' + CommandURL + '@@-d@@'+ CommandData, 10000)
       logInfo("Main floor command", UpdateResult)
-=======
-    var String UpdateResult = executeCommandLine('curl@@-sSH@@"Content-Type: application/json"@@-XPOST@@' + CommandURL + '@@-d@@'+ CommandData, 10000)
-    logInfo("Update result", UpdateResult)
-
-    if (!UpdateResult.contains('"status": "success"')) {
-      logInfo("Pod write", "Error writing to Sensobi API, retrying in 5 seconds")
-<<<<<<< Updated upstream
-=======
->>>>>>> origin/master
->>>>>>> Stashed changes
       Thread::sleep(5000)
     } while (!UpdateResult.contains('"status": "success"'))
   }
