@@ -114,12 +114,19 @@ rule "Write Sensibo State"
     var String CommandData = CommandState + CommandMode + CommandFan + CommandSwing + CommandTemp
 
     var String UpdateResult
-    
+    var Number Attempts = 0
+  
     do {
+      Attempts += 1
+      logInfo("Sensibo command", CommandData)
       UpdateResult = executeCommandLine('curl@@-sSH@@"Content-Type: application/json"@@-XPOST@@' + CommandURL + '@@-d@@'+ CommandData, 10000)
-      logInfo("Main floor command", UpdateResult)
+      logInfo("Sensibo result", UpdateResult)
       Thread::sleep(5000)
-    } while (!UpdateResult.contains('"status": "success"'))
+    } while (!UpdateResult.contains('"status": "success"') && Attempts < 5)
+  
+    if (Attempts == 5) {
+      logError("Sensibo write", "5 failures updating Sensibo")
+    }      
   }
 
   catch(Throwable t) {
