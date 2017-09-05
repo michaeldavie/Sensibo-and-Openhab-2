@@ -1,5 +1,29 @@
 val String APIKey = "INSERT-API-KEY"
-val String PodID = "INSERT-POD-ID"
+var String PodID
+
+/*** Read Pod ID ***/
+
+rule "Read Pod ID"
+
+  when
+    System started
+  then
+
+  try {          
+    var String PodsResult
+  
+    do {
+      PodsResult = executeCommandLine('curl -sSH "Accept: application/json"     "https://home.sensibo.com/api/v2/users/me/pods?apiKey=' + APIKey + '"', 10000)
+    } while (!PodsResult.contains('"status": "success"'))
+
+    PodID = transform("JSONPATH", "$.result[0].id", PodsResult)
+  }
+
+  catch(Throwable t) {
+    logError("ReadPodID", "Error was caught: {}", t)
+  }
+
+end
 
 /*** Read Sensibo State ***/
 
@@ -8,6 +32,8 @@ rule "Read Sensibo State"
   when
     System started
   then
+
+  Thread::sleep(10000)
 
   try {
     var String PodStatus 
@@ -50,7 +76,6 @@ end
 rule "Read Sensibo Measurements"
 
   when
-    System started or
     Time cron "0 0/5 * * * ?"
   then
 
