@@ -118,6 +118,9 @@ rule "Write Sensibo State"
   then
   
   try {
+
+    Thread::sleep(1000)         // Avoid race condition where state has not yet been updated
+
     var Boolean PodBoolean
 
     if (SensiboState.state == ON)
